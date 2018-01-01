@@ -6,7 +6,6 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.firefox.FirefoxDriverLogLevel;
 import org.openqa.selenium.firefox.FirefoxOptions;
 
 import javax.swing.*;
@@ -14,19 +13,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class App {
 
 	private static final String PATH_WEBDRIVER = App.class.getClassLoader().getResource("geckodriver").getPath();
-	private static final Integer POOL_SIZE = Runtime.getRuntime().availableProcessors() + 1;
-	private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(POOL_SIZE);
 
-	private static List<String> nextBranch(String url) throws InterruptedException {
+	private static List<String> nextBranch(String url) {
 
 		FirefoxOptions options =
 				new FirefoxOptions()
@@ -63,28 +57,18 @@ public class App {
 				.collect(Collectors.toList());
 	}
 
-	private static List<String> searchNewBranch(Integer urlLength, WebDriver driver) throws InterruptedException {
-		List<Callable<List<String>>> callables = driver.findElements(By.tagName("a"))
+	private static List<String> searchNewBranch(Integer urlLength, WebDriver driver) {
+		return driver.findElements(By.tagName("a"))
 				.parallelStream()
 				.map(a-> a.getAttribute("href"))
 				.filter(a -> a.length() > urlLength)
-				.map(href -> (Callable<List<String>>) () -> nextBranch(href))
-				.collect(Collectors.toList());
-
-		return EXECUTOR.invokeAll(callables)
-				.parallelStream()
-				.map(future -> {
-					try {
-						return future.get();
-					}
-					catch (Exception e) {
-						throw new IllegalStateException(e);
-					}
-				})
-				.reduce(new ArrayList<>(), (a, b) -> {
+				.map(App::nextBranch)
+				.reduce(new ArrayList<>(), (a,b) -> {
 					a.addAll(b);
 					return a;
 				});
+
+
 	}
 
 	private static void createSaveFile(File whereToSave, String url) {
@@ -101,19 +85,18 @@ public class App {
 		}
 
 		if(file.exists()){
-			file.delete();
+			return;
 		}
 
 		try {
 
 			if(file.createNewFile()){
-				System.out.println("Start download: " + url);
 				FileUtils.copyURLToFile(new URL(url), file);
-				System.out.println("End download: " + url);
 			}
 
 		} catch (IOException e) {
 			System.out.println("file wasn't created: " + path);
+			createSaveFile(whereToSave, url);
 		}
 	}
 
@@ -145,7 +128,7 @@ public class App {
 		if (!Strings.isNullOrEmpty(url) && fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
 
 			nextBranch(url)
-					.parallelStream()
+					.stream()
 					.forEach(href -> createSaveFile(fileChooser.getSelectedFile(), href));
 
 		} else {
