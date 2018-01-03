@@ -1,3 +1,5 @@
 .idea/
 target/
 scraper.iml
+scraper.ipr
+scraper.iws
