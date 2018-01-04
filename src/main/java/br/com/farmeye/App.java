@@ -75,7 +75,7 @@ public class App {
 //		JFrame frame = new JFrame();
 //
 //		String url = insertPath(frame);
-		String url = "http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/WE/2016/11/";
+		String url = "http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/WE/";
 //
 //		File folderToSave = chooseFolder(frame);
 		File folderToSave = new File("/home/luiz/Downloads/teste");

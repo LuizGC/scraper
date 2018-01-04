@@ -53,7 +53,7 @@ public class SentinelScrapper {
 
 	private void download() {
 		links
-				.parallelStream()
+				.stream()
 				.filter(link ->  link.endsWith(".jp2"))
 				.forEach(link -> {
 					File file = new File(folderToSave, FilenameUtils.getName(link));
@@ -74,7 +74,7 @@ public class SentinelScrapper {
 	private void nextBranch() {
 		final int tamanho = url.length();
 		links
-				.parallelStream()
+				.stream()
 				.filter(link -> link.length() >= tamanho)
 				.filter(link -> link.substring(tamanho).length() > 0)
 				.forEach(link -> {
