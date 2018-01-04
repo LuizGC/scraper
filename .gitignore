@@ -3,3 +3,5 @@ target/
 scraper.iml
 scraper.ipr
 scraper.iws
+out/
+

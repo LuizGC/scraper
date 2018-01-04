@@ -1,112 +1,18 @@
 package br.com.farmeye;
 
-import com.google.common.base.Strings;
 import org.apache.commons.io.FileUtils;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.firefox.FirefoxOptions;
+import org.apache.commons.validator.UrlValidator;
 
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class App {
 
 	private static final String PATH_WEBDRIVER = App.class.getClassLoader().getResource("geckodriver").getPath();
 
-	private static List<String> nextBranch(String url) {
-
-		FirefoxOptions options =
-				new FirefoxOptions()
-						.setHeadless(true);
-
-		WebDriver driver = new FirefoxDriver(options);
-
-		driver.get(url);
-		driver.manage().timeouts().implicitlyWait(2, TimeUnit.MINUTES);
-
-		WebElement breadcrumbs = driver.findElement(By.id("breadcrumbs"));
-
-		boolean isEnd = !(breadcrumbs.findElements(By.tagName("a")).size() < 9);
-
-		Set<String> listFilesToDownload = new HashSet<String>();
-
-		if(isEnd){
-			listFilesToDownload.addAll(getLeafs(driver));
-		}else{
-			listFilesToDownload.addAll(searchNewBranch(url.length(), driver));
-		}
-
-
-		driver.quit();
-
-		return new ArrayList<>(listFilesToDownload);
-	}
-
-	private static List<String> getLeafs(WebDriver driver) {
-		return driver.findElements(By.tagName("a"))
-				.parallelStream()
-				.filter(a -> a.getText().contains("."))
-				.map(a-> a.getAttribute("href"))
-				.collect(Collectors.toList());
-	}
-
-	private static List<String> searchNewBranch(Integer urlLength, WebDriver driver) {
-		return driver.findElements(By.tagName("a"))
-				.parallelStream()
-				.map(a-> a.getAttribute("href"))
-				.filter(a -> a.length() > urlLength)
-				.map(App::nextBranch)
-				.reduce(new ArrayList<>(), (a,b) -> {
-					a.addAll(b);
-					return a;
-				});
-
-
-	}
-
-	private static void createSaveFile(File whereToSave, String url) {
-		String path = url.replaceFirst("^(http[s]?://www\\.|http[s]?://|www\\.)","");
-		List<String> pathArray = new ArrayList<>(Arrays.asList(path.split("/")));
-		pathArray.remove(0);
-
-		File file = new File(whereToSave, String.join("/", pathArray)) ;
-
-		File parent = file.getParentFile();
-
-		if (!parent.exists()) {
-			parent.mkdirs();
-		}
-
-		if(file.exists()){
-			return;
-		}
-
-		try {
-
-			if(file.createNewFile()){
-				FileUtils.copyURLToFile(new URL(url), file);
-			}
-
-		} catch (IOException e) {
-			System.out.println("file wasn't created: " + path);
-			createSaveFile(whereToSave, url);
-		}
-	}
-
-
-	public static void main( String[] args ) throws Exception {
-
-		System.setProperty("webdriver.gecko.driver", PATH_WEBDRIVER);
-		System.setProperty(FirefoxDriver.SystemProperty.BROWSER_LOGFILE,"/dev/null");
-
-		JFrame frame = new JFrame("InputDialog Example #1");
+	private static File chooseFolder(JFrame frame){
 
 		JFileChooser fileChooser = new JFileChooser();
 
@@ -116,24 +22,73 @@ public class App {
 
 		fileChooser.setAcceptAllFileFilterUsed(false);
 
+		if(fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION){
+
+			return fileChooser.getSelectedFile();
+
+		} else {
+
+			JOptionPane.showMessageDialog(frame, "Folder path was not selected!");
+			System.exit(0);
+			return null;
+		}
+
+	}
+
+	private static String insertPath(JFrame frame){
+
+		String textDescription = "You can search at https://remotepixel.ca/projects/satellitesearch.html\n" +
+				"Example Sentinel: http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/UE/\n" +
+				//"Example Landsat: https://landsatonaws.com/L8/227/070";
+				"Download Landsat data still in development.";
+		String textQuestion = "What is the aws url that you want download?";
+
+
 		String url = JOptionPane.showInputDialog(
 				frame,
-				"You can search at https://remotepixel.ca/projects/satellitesearch.html\n" +
-						"Example Sentinel: http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/UE/\n" +
-						"Example Landsat: https://landsatonaws.com/L8/227/070",
-				"What is the aws url that you want download?",
+				textDescription,
+				textQuestion,
 				JOptionPane.PLAIN_MESSAGE
 		);
 
-		if (!Strings.isNullOrEmpty(url) && fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
+		UrlValidator urlValidator = new UrlValidator();
 
-			nextBranch(url)
-					.stream()
-					.forEach(href -> createSaveFile(fileChooser.getSelectedFile(), href));
+		if(urlValidator.isValid(url)){
+
+			return url;
 
 		} else {
-			System.out.println("No Selection ");
+
+			JOptionPane.showMessageDialog(frame, "Url format is wrong!");
+			System.exit(0);
+			return null;
+
 		}
+	}
+
+	public static void main( String[] args ) throws IOException {
+
+		System.setProperty("webdriver.gecko.driver", PATH_WEBDRIVER);
+
+		System.setProperty(FirefoxDriver.SystemProperty.BROWSER_LOGFILE,"/dev/null");
+
+//		JFrame frame = new JFrame();
+//
+//		String url = insertPath(frame);
+		String url = "http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/WE/2016/11/";
+//
+//		File folderToSave = chooseFolder(frame);
+		File folderToSave = new File("/home/luiz/Downloads/teste");
+
+		if(folderToSave.exists()){
+			FileUtils.deleteDirectory(folderToSave);
+		}
+
+		folderToSave.mkdir();
+
+		SentinelScrapper scrapper = new SentinelScrapper(url, folderToSave);
+		scrapper.downloadFiles();
+
 
 		System.exit(0);
 	}
