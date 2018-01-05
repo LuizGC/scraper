@@ -1,5 +1,7 @@
 package br.com.farmeye;
 
+import com.machinepublishers.jbrowserdriver.JBrowserDriver;
+import com.machinepublishers.jbrowserdriver.Settings;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.openqa.selenium.By;
@@ -26,6 +28,13 @@ public class SentinelScrapper {
 		this.url = url;
 		this.folderToSave = folderToSave;
 		this.downloadErrors = new ArrayList<>();
+//		Settings settings = Settings
+//				.builder()
+//				.headless(true)
+//				.javascript(true)
+//				.cache(false)
+//				.build();
+//		JBrowserDriver driver = new JBrowserDriver(settings);
 		FirefoxOptions options = new FirefoxOptions().setHeadless(true);
 		WebDriver driver = new FirefoxDriver(options);
 		driver.get(url);
@@ -40,7 +49,8 @@ public class SentinelScrapper {
 
 	private Boolean isLeaf(){
 
-		return links.parallelStream().anyMatch(link -> link.endsWith(".jp2"));
+		return links.parallelStream()
+				.anyMatch(link -> link.endsWith(".jp2"));
 
 	}
 

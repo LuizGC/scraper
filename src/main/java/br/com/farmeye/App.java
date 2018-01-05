@@ -1,19 +1,11 @@
 package br.com.farmeye;
 
-import org.apache.commons.io.FileUtils;
-import org.openqa.selenium.firefox.FirefoxDriver;
 import org.apache.commons.validator.UrlValidator;
+import org.openqa.selenium.firefox.FirefoxDriver;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 
 public class App {
