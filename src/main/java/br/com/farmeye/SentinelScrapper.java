@@ -10,6 +10,7 @@ import org.openqa.selenium.firefox.FirefoxOptions;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -19,10 +20,12 @@ public class SentinelScrapper {
 	private final File folderToSave;
 	private final String url;
 	private final List<String> links;
+	private final List<String> downloadErrors;
 
 	public SentinelScrapper(String url, File folderToSave) {
 		this.url = url;
 		this.folderToSave = folderToSave;
+		this.downloadErrors = new ArrayList<>();
 		FirefoxOptions options = new FirefoxOptions().setHeadless(true);
 		WebDriver driver = new FirefoxDriver(options);
 		driver.get(url);
@@ -54,21 +57,24 @@ public class SentinelScrapper {
 	private void download() {
 		links
 				.parallelStream()
-				.filter(link ->  link.endsWith(".jp2"))
+				.filter(link -> canDownload(link))
 				.forEach(link -> {
 					File file = new File(folderToSave, FilenameUtils.getName(link));
 					try {
 						if(file.exists()){
 							file.delete();
 						}
-
-						FileUtils.copyURLToFile(new URL(link), file, 1000, 1000);
-						System.out.println("Sucesso: " + link);
+						FileUtils.copyURLToFile(new URL(link), file, 2000, 2000);
+						System.out.println("Success: " + link);
 					} catch (IOException e) {
 						e.printStackTrace();
-						System.out.println("Erro: " + link);
+						downloadErrors.add(link);
 					}
 				});
+	}
+
+	private boolean canDownload(String link) {
+		return !link.endsWith("preview.jp2") && (link.endsWith(".jp2") || link.endsWith("tileInfo.json"));
 	}
 
 	private void nextBranch() {
@@ -84,8 +90,11 @@ public class SentinelScrapper {
 					}
 					SentinelScrapper scrapper = new SentinelScrapper(link, file);
 					scrapper.downloadFiles();
+					downloadErrors.addAll(scrapper.getDownloadErrors());
 				});
 	}
 
-
+	public List<String> getDownloadErrors() {
+		return new ArrayList<>(downloadErrors);
+	}
 }

@@ -5,12 +5,49 @@ import org.openqa.selenium.firefox.FirefoxDriver;
 import org.apache.commons.validator.UrlValidator;
 
 import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
 
 public class App {
 
-	private static final String PATH_WEBDRIVER = App.class.getClassLoader().getResource("geckodriver").getPath();
+	public static void main( String[] args ) throws IOException {
+
+		String PATH_WEBDRIVER = App.class.getClassLoader().getResource("geckodriver").getPath();
+
+		System.setProperty("webdriver.gecko.driver", PATH_WEBDRIVER);
+
+		System.setProperty(FirefoxDriver.SystemProperty.BROWSER_LOGFILE,"/dev/null");
+
+		JFrame frame = new JFrame();
+//
+		String url = insertPath(frame);
+//		String url = "http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/WE/2015/12/7/";
+//
+		File folderToSave = chooseFolder(frame);
+//		File folderToSave = new File("/home/luiz/Downloads/teste");
+
+//		if(folderToSave.exists()){
+//			FileUtils.deleteDirectory(folderToSave);
+//		}
+//
+//		folderToSave.mkdir();
+
+		SentinelScrapper scrapper = new SentinelScrapper(url, folderToSave);
+
+		scrapper.downloadFiles();
+
+		showFinalState(frame, scrapper.getDownloadErrors());
+
+		System.exit(0);
+	}
 
 	private static File chooseFolder(JFrame frame){
 
@@ -66,30 +103,13 @@ public class App {
 		}
 	}
 
-	public static void main( String[] args ) throws IOException {
-
-		System.setProperty("webdriver.gecko.driver", PATH_WEBDRIVER);
-
-		System.setProperty(FirefoxDriver.SystemProperty.BROWSER_LOGFILE,"/dev/null");
-
-//		JFrame frame = new JFrame();
-//
-//		String url = insertPath(frame);
-		String url = "http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/WE/";
-//
-//		File folderToSave = chooseFolder(frame);
-		File folderToSave = new File("/home/luiz/Downloads/teste");
-
-		if(folderToSave.exists()){
-			FileUtils.deleteDirectory(folderToSave);
+	private static void showFinalState(JFrame frame, List<String> errors) {
+		if(errors.isEmpty()){
+			JOptionPane.showMessageDialog(frame, "Download completed!");
+		}else{
+			String problemDescription = "Errors when download: \n" + String.join("\n", errors);
+			JOptionPane.showMessageDialog(frame, problemDescription, null, JOptionPane.ERROR_MESSAGE);
 		}
-
-		folderToSave.mkdir();
-
-		SentinelScrapper scrapper = new SentinelScrapper(url, folderToSave);
-		scrapper.downloadFiles();
-
-
-		System.exit(0);
 	}
+
 }
