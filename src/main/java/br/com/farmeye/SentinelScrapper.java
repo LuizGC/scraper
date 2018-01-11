@@ -1,110 +1,70 @@
 package br.com.farmeye;
 
 import com.machinepublishers.jbrowserdriver.JBrowserDriver;
-import com.machinepublishers.jbrowserdriver.Settings;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.firefox.FirefoxOptions;
+import org.openqa.selenium.WebElement;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class SentinelScrapper {
 
-	private final File folderToSave;
-	private final String url;
-	private final List<String> links;
-	private final List<String> downloadErrors;
+	private final List<WebElement> nextBranchLinks;
+	private final List<String> downloadLinks;
+	private Boolean isLeaf = false;
 
-	public SentinelScrapper(String url, File folderToSave) {
-		this.url = url;
-		this.folderToSave = folderToSave;
-		this.downloadErrors = new ArrayList<>();
-//		Settings settings = Settings
-//				.builder()
-//				.headless(true)
-//				.javascript(true)
-//				.cache(false)
-//				.build();
-//		JBrowserDriver driver = new JBrowserDriver(settings);
-		FirefoxOptions options = new FirefoxOptions().setHeadless(true);
-		WebDriver driver = new FirefoxDriver(options);
+	public SentinelScrapper(String url, JBrowserDriver driver) {
+
 		driver.get(url);
-		driver.manage().timeouts().implicitlyWait(2, TimeUnit.MINUTES);
-		links = driver.findElements(By.tagName("a"))
+
+		List<WebElement> elements = driver.findElements(By.tagName("a"))
 				.parallelStream()
-				.map(link -> link.getAttribute("href"))
 				.collect(Collectors.toList());
-		driver.quit();
 
-	}
+		isLeaf = elements.parallelStream()
+				.anyMatch(link -> getHref(link).endsWith(".jp2"));
 
-	private Boolean isLeaf(){
+		nextBranchLinks = elements.parallelStream()
+				.filter(link -> isBranchsLinks(link, url.length()))
+				.collect(Collectors.toList());
 
-		return links.parallelStream()
-				.anyMatch(link -> link.endsWith(".jp2"));
-
-	}
-
-	public void downloadFiles(){
-
-		if(isLeaf()){
-			this.download();
-		} else{
-			this.nextBranch();
-		}
-
-	}
-
-	private void download() {
-		links
-				.parallelStream()
+		downloadLinks = elements.parallelStream()
 				.filter(link -> canDownload(link))
-				.forEach(link -> {
-					File file = new File(folderToSave, FilenameUtils.getName(link));
-					try {
-						if(file.exists()){
-							file.delete();
-						}
-						FileUtils.copyURLToFile(new URL(link), file, 2000, 2000);
-						System.out.println("Success: " + link);
-					} catch (IOException e) {
-						e.printStackTrace();
-						downloadErrors.add(link);
-					}
-				});
+				.map(this::getHref)
+				.collect(Collectors.toList());
+
 	}
 
-	private boolean canDownload(String link) {
+	private String getHref(WebElement link) {
+		return link.getAttribute("href");
+	}
+
+	private boolean isBranchsLinks(WebElement element, Integer sizeUrl) {
+		String link = getHref(element);
+
+		return link.length() >= sizeUrl &&
+				link.substring(sizeUrl).length() > 0;
+	}
+
+	private boolean canDownload(WebElement element) {
+		String link = getHref(element);
 		return !link.endsWith("preview.jp2") && (link.endsWith(".jp2") || link.endsWith("tileInfo.json"));
 	}
 
-	private void nextBranch() {
-		final int tamanho = url.length();
-		links
-				.parallelStream()
-				.filter(link -> link.length() >= tamanho)
-				.filter(link -> link.substring(tamanho).length() > 0)
-				.forEach(link -> {
-					File file = new File(folderToSave, link.replaceAll(url, ""));
-					if(!file.exists()){
-						file.mkdir();
-					}
-					SentinelScrapper scrapper = new SentinelScrapper(link, file);
-					scrapper.downloadFiles();
-					downloadErrors.addAll(scrapper.getDownloadErrors());
-				});
+	public Boolean isLeaf(){
+
+		return isLeaf;
+
 	}
 
-	public List<String> getDownloadErrors() {
-		return new ArrayList<>(downloadErrors);
+	public List<WebElement> getNextBranchLinks(){
+
+		return new ArrayList<>(nextBranchLinks);
+
+	}
+
+	public List<String> getDownloadLinks() {
+		return  new ArrayList<>(downloadLinks);
 	}
 }

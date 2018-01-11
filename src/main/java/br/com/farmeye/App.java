@@ -1,107 +1,69 @@
 package br.com.farmeye;
 
-import org.apache.commons.validator.UrlValidator;
-import org.openqa.selenium.firefox.FirefoxDriver;
+import com.machinepublishers.jbrowserdriver.JBrowserDriver;
+import com.machinepublishers.jbrowserdriver.Settings;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
 
-import javax.swing.*;
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class App {
 
-	public static void main( String[] args ) throws IOException {
+	public static void main( String[] args ){
 
-		String PATH_WEBDRIVER = App.class.getClassLoader().getResource("geckodriver").getPath();
+		String urlDownload = args[0];
+		Double cloudPercentege = args.length < 2 ? 10 : Double.valueOf(args[1]);
+		String filename = args.length < 3 ? "downloads" : args[3];
 
-		System.setProperty("webdriver.gecko.driver", PATH_WEBDRIVER);
+		Settings settings = Settings
+				.builder()
+				.headless(false)
+				.javascript(true)
+				.cache(true)
+				.connectTimeout(0)
+				.socketTimeout(0)
+				.build();
 
-		System.setProperty(FirefoxDriver.SystemProperty.BROWSER_LOGFILE,"/dev/null");
+		JBrowserDriver driver = new JBrowserDriver(settings);
 
-		JFrame frame = new JFrame();
-//
-		String url = insertPath(frame);
-//		String url = "http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/WE/2015/12/7/";
-//
-		File folderToSave = chooseFolder(frame);
-//		File folderToSave = new File("/home/luiz/Downloads/teste");
+		driver.get(urlDownload);
 
-//		if(folderToSave.exists()){
-//			FileUtils.deleteDirectory(folderToSave);
-//		}
-//
-//		folderToSave.mkdir();
+		String windowName = driver.getWindowHandle();
 
-		SentinelScrapper scrapper = new SentinelScrapper(url, folderToSave);
+		driver.manage().timeouts().implicitlyWait(2, TimeUnit.MINUTES);
 
-		scrapper.downloadFiles();
+		driver.findElements(By.tagName("a"))
+				.stream()
+				.filter(link ->  isBranchsLinks(link, urlDownload.length()))
+				.forEach(link -> {
+					System.out.println(getHref(link));
+					new Actions(driver)
+							.keyDown(Keys.CONTROL)
+							.click(link)
+							.keyUp(Keys.CONTROL)
+							.build()
+							.perform();
+					driver.switchTo().window(windowName);
+				});
 
-		showFinalState(frame, scrapper.getDownloadErrors());
+		driver.quit();
 
-		System.exit(0);
-	}
-
-	private static File chooseFolder(JFrame frame){
-
-		JFileChooser fileChooser = new JFileChooser();
-
-		fileChooser.setDialogTitle("Select folder to download images from AWS");
-
-		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-
-		fileChooser.setAcceptAllFileFilterUsed(false);
-
-		if(fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION){
-
-			return fileChooser.getSelectedFile();
-
-		} else {
-
-			JOptionPane.showMessageDialog(frame, "Folder path was not selected!");
-			System.exit(0);
-			return null;
-		}
 
 	}
 
-	private static String insertPath(JFrame frame){
-
-		String textDescription = "You can search at https://remotepixel.ca/projects/satellitesearch.html\n" +
-				"Example Sentinel: http://sentinel-s2-l1c.s3-website.eu-central-1.amazonaws.com/#tiles/21/L/UE/\n" +
-				//"Example Landsat: https://landsatonaws.com/L8/227/070";
-				"Download Landsat data still in development.";
-		String textQuestion = "What is the aws url that you want download?";
-
-
-		String url = JOptionPane.showInputDialog(
-				frame,
-				textDescription,
-				textQuestion,
-				JOptionPane.PLAIN_MESSAGE
-		);
-
-		UrlValidator urlValidator = new UrlValidator();
-
-		if(urlValidator.isValid(url)){
-
-			return url;
-
-		} else {
-
-			JOptionPane.showMessageDialog(frame, "Url format is wrong!");
-			System.exit(0);
-			return null;
-
-		}
+	private static String getHref(WebElement link) {
+		return link.getAttribute("href");
 	}
 
-	private static void showFinalState(JFrame frame, List<String> errors) {
-		if(errors.isEmpty()){
-			JOptionPane.showMessageDialog(frame, "Download completed!");
-		}else{
-			String problemDescription = "Errors when download: \n" + String.join("\n", errors);
-			JOptionPane.showMessageDialog(frame, problemDescription, null, JOptionPane.ERROR_MESSAGE);
-		}
+	private static boolean isBranchsLinks(WebElement element, Integer sizeUrl) {
+		String link = getHref(element);
+
+		return link.length() >= sizeUrl &&
+				link.substring(sizeUrl).length() > 0;
 	}
 
 }
