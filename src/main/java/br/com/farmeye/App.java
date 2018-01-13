@@ -76,8 +76,7 @@ public class App {
 		textArea.append("\n");
 		textArea.append("\n");
 		textArea.append("Next Urls had problems to Download:\n");
-		textArea.setCaretPosition(textArea.getDocument().getLength());
-		errorLinks.parallelStream().forEach(System.out::println);
+		errorLinks.stream().forEach(System.out::println);
 
 		textArea.append("\n");
 		textArea.append("Finished");
@@ -96,6 +95,8 @@ public class App {
 		}
 
 		File file = new File(folder, filename);
+		file.createNewFile();
+
 		String intern = url.toString().intern();
 		synchronized(intern){
 			textArea.append("Downloading " +url+ "\n");
